@@ -4,7 +4,6 @@ from django.urls import include, path
 from .health import health_live, health_ready
 
 urlpatterns = [
-    path('', include('webui.urls')),
     path('admin/', admin.site.urls),
     path('health/', health_live, name='health-live'),
     path('health/live/', health_live, name='health-live-v2'),

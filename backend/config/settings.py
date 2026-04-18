@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'mail_templates',
     'voice',
     'reminders',
-    'webui',
 ]
 
 MIDDLEWARE = [
