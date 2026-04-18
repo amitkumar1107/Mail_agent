@@ -48,6 +48,8 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      COLLECT_STATIC: ${COLLECT_STATIC:-true}
     user: "app"
     ports:
       - "8000:8000"
@@ -100,6 +102,7 @@ services:
       POSTGRES_PORT: 5432
       DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
       RUN_MIGRATIONS: "false"
+      COLLECT_STATIC: "false"
     depends_on:
       db:
         condition: service_healthy
@@ -126,6 +129,7 @@ services:
       POSTGRES_PORT: 5432
       DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
       RUN_MIGRATIONS: "false"
+      COLLECT_STATIC: "false"
     depends_on:
       db:
         condition: service_healthy

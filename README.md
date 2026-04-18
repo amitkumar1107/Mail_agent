@@ -14,12 +14,24 @@ A Dockerized Django + DRF + Celery + Redis AI mail assistant that supports natur
 - Structured JSON logging
 - Health endpoints: `/health/live/`, `/health/ready/`
 
-## Quick Start
+## Quick Start (Full Stack)
 ```bash
 cp .env.example .env
 # update secrets, domain origins, and SMTP credentials
 
+./infra/scripts/predeploy_check.sh .env
 docker compose up -d --build
+curl http://localhost/health/live/
+curl http://localhost/health/ready/
+```
+
+## Quick Start (Free-Tier Friendly)
+```bash
+cp .env.free.example .env.free
+# update secrets, domain origins, and SMTP credentials
+
+./infra/scripts/predeploy_check.sh .env.free
+docker compose -f docker-compose.free.yml --env-file .env.free up -d --build
 curl http://localhost/health/live/
 curl http://localhost/health/ready/
 ```
@@ -34,6 +46,7 @@ curl http://localhost/health/ready/
 
 ## Docs
 - `docs/DEPLOYMENT.md`
+- `docs/DEPLOY_FREE.md`
 - `docs/RUNBOOK.md`
 - `docs/ENVIRONMENT.md`
 - `docs/API.md`

@@ -25,6 +25,7 @@ cd mail_helper
 cp .env.example .env
 # edit .env with strong secrets, domain, smtp credentials
 
+./infra/scripts/predeploy_check.sh .env
 docker compose up -d --build
 ```
 
@@ -87,3 +88,11 @@ docker compose ps
 - secure cookies enabled
 - `MAIL_SEND_ASYNC=True`
 - backups running and tested
+
+## 10. Free-tier Lightweight Mode
+If your host cannot run Postgres + Redis + Celery, use:
+- `docs/DEPLOY_FREE.md`
+- `docker-compose.free.yml`
+- `.env.free.example`
+
+This mode trades scalability for easier deployment on constrained free plans.

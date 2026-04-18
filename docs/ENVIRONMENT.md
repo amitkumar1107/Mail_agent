@@ -9,6 +9,7 @@
 
 ## Database
 - `DB_ENGINE` (`postgres` or `sqlite`)
+- `SQLITE_PATH` (optional path when `DB_ENGINE=sqlite`)
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`

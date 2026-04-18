@@ -21,12 +21,13 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() == 'true'
 if not DEBUG and SECRET_KEY == 'django-insecure-change-me':
     raise RuntimeError('DJANGO_SECRET_KEY must be set when DJANGO_DEBUG=False')
 
-#ALLOWED_HOSTS = [
- #   host.strip()
- #   for host in os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
-   # if host.strip()
-#]
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+    if host.strip()
+]
+if not ALLOWED_HOSTS and not DEBUG:
+    raise RuntimeError('DJANGO_ALLOWED_HOSTS must be set when DJANGO_DEBUG=False')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -91,10 +92,11 @@ if DB_ENGINE == 'postgres':
         }
     }
 else:
+    sqlite_path = os.getenv('SQLITE_PATH', str(BASE_DIR / 'db.sqlite3'))
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': sqlite_path,
         }
     }
 
