@@ -1,0 +1,214 @@
+{% extends "webui/base.html" %}
+{% block content %}
+<div class="grid g2">
+  <div class="card">
+    <h1 class="text-center text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Welcome Back</h1>
+    <form class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium">Username</label>
+        <input id="username" class="mt-1 block w-full" placeholder="Enter your username" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Password</label>
+        <input id="password" type="password" class="mt-1 block w-full" placeholder="Enter your password" />
+      </div>
+      <button id="login-btn" type="button" class="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold py-2 px-4 rounded transition-all">Login</button>
+      <button id="logout-btn" type="button" class="w-full mt-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition-all">Logout</button>
+      <div id="login-status" class="status text-center"></div>
+    </form>
+    <p class="text-center mt-4">Don't have an account? <a href="/register/" class="text-blue-400 hover:text-blue-300">Sign up here</a></p>
+  </div>
+
+  <div class="card">
+    <h2 class="text-center text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Email OTP Verification</h2>
+    <form class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium">Email</label>
+        <input id="otp-email" type="email" class="mt-1 block w-full" placeholder="Enter your signup email" />
+      </div>
+      <div class="row">
+        <button id="otp-request-btn" type="button" class="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold py-2 px-4 rounded transition-all">Request OTP</button>
+        <button id="otp-resend-btn" type="button" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition-all">Resend OTP</button>
+      </div>
+      <div>
+        <label class="block text-sm font-medium">OTP Code</label>
+        <input id="otp-code" maxlength="6" class="mt-1 block w-full" placeholder="Enter 6-digit OTP" />
+      </div>
+      <button id="otp-verify-btn" type="button" class="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold py-2 px-4 rounded transition-all">Verify OTP</button>
+      <div id="otp-status" class="status text-center"></div>
+      <p class="text-xs text-gray-300">OTP is sent automatically on signup. If not received, click Request/Resend OTP above.</p>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+  const loginStatus = document.getElementById('login-status');
+  const otpStatus = document.getElementById('otp-status');
+  const otpRequestBtn = document.getElementById('otp-request-btn');
+  const otpResendBtn = document.getElementById('otp-resend-btn');
+  const OTP_COOLDOWN_SECONDS = 60;
+  let otpCooldownRemaining = 0;
+  let otpCooldownTimer = null;
+
+  function setStatus(el, ok, msg){
+    el.textContent = msg;
+    el.className = ok ? 'status ok text-center' : 'status err text-center';
+  }
+
+  function getEmailValue(){
+    return document.getElementById('otp-email').value.trim().toLowerCase();
+  }
+
+  function setOtpButtonsState(disabled){
+    otpRequestBtn.disabled = disabled;
+    otpResendBtn.disabled = disabled;
+    otpRequestBtn.style.opacity = disabled ? '0.6' : '1';
+    otpResendBtn.style.opacity = disabled ? '0.6' : '1';
+    otpRequestBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+    otpResendBtn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+  }
+
+  function renderOtpCooldown(){
+    if (otpCooldownRemaining > 0) {
+      otpResendBtn.textContent = 'Resend OTP (' + otpCooldownRemaining + 's)';
+      setOtpButtonsState(true);
+      return;
+    }
+
+    otpResendBtn.textContent = 'Resend OTP';
+    setOtpButtonsState(false);
+  }
+
+  function startOtpCooldown(){
+    otpCooldownRemaining = OTP_COOLDOWN_SECONDS;
+    renderOtpCooldown();
+
+    if (otpCooldownTimer) {
+      clearInterval(otpCooldownTimer);
+    }
+
+    otpCooldownTimer = setInterval(() => {
+      otpCooldownRemaining -= 1;
+      renderOtpCooldown();
+      if (otpCooldownRemaining <= 0) {
+        clearInterval(otpCooldownTimer);
+        otpCooldownTimer = null;
+      }
+    }, 1000);
+  }
+
+  (function prefillEmailFromQuery(){
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get('email');
+    if (email) {
+      document.getElementById('otp-email').value = email;
+    }
+  })();
+
+  document.getElementById('login-btn').onclick = async (e) => {
+    e.preventDefault();
+    loginStatus.textContent = 'Logging in...';
+    loginStatus.className = 'status text-center';
+
+    const resp = await fetch('/api/auth/login/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        username: document.getElementById('username').value.trim(),
+        password: document.getElementById('password').value,
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      setStatus(loginStatus, false, data.detail || 'Login failed');
+      return;
+    }
+
+    setToken(data.tokens.access);
+    setRefreshToken(data.tokens.refresh);
+    setStatus(loginStatus, true, 'Login successful.');
+  };
+
+  document.getElementById('logout-btn').onclick = (e) => {
+    e.preventDefault();
+    setToken('');
+    setRefreshToken('');
+    loginStatus.textContent = 'Logged out.';
+    loginStatus.className = 'status text-center';
+  };
+
+  async function requestOtp(showResendMessage){
+    if (otpCooldownRemaining > 0) {
+      setStatus(otpStatus, false, 'Please wait ' + otpCooldownRemaining + 's before requesting another OTP.');
+      return;
+    }
+
+    const email = getEmailValue();
+    if (!email) {
+      setStatus(otpStatus, false, 'Please enter email first.');
+      return;
+    }
+
+    otpStatus.textContent = showResendMessage ? 'Resending OTP...' : 'Requesting OTP...';
+    otpStatus.className = 'status text-center';
+
+    const resp = await fetch('/api/auth/otp/request/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      setStatus(otpStatus, false, data.detail || JSON.stringify(data));
+      return;
+    }
+
+    setStatus(otpStatus, true, data.message || 'If this email exists, OTP has been sent.');
+    startOtpCooldown();
+  }
+
+  document.getElementById('otp-request-btn').onclick = async (e) => {
+    e.preventDefault();
+    await requestOtp(false);
+  };
+
+  document.getElementById('otp-resend-btn').onclick = async (e) => {
+    e.preventDefault();
+    await requestOtp(true);
+  };
+
+  document.getElementById('otp-verify-btn').onclick = async (e) => {
+    e.preventDefault();
+    const email = getEmailValue();
+    const code = document.getElementById('otp-code').value.trim();
+
+    if (!email || !code) {
+      setStatus(otpStatus, false, 'Please enter both email and OTP code.');
+      return;
+    }
+
+    otpStatus.textContent = 'Verifying OTP...';
+    otpStatus.className = 'status text-center';
+
+    const resp = await fetch('/api/auth/otp/verify/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email, code })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      setStatus(otpStatus, false, data.detail || JSON.stringify(data));
+      return;
+    }
+
+    setStatus(otpStatus, true, data.message || 'Email verified successfully. You can login now.');
+  };
+
+  renderOtpCooldown();
+</script>
+{% endblock %}

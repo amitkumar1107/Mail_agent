@@ -1,0 +1,55 @@
+{% extends "webui/base.html" %}
+{% block content %}
+<div class="card">
+  <h1 data-i18n="contacts">Contacts</h1>
+  <div class="grid g2">
+    <div>
+      <label>Full Name</label><input id="c-name" />
+      <label>Email</label><input id="c-email" />
+      <label>Phone</label><input id="c-phone" />
+      <label>Relationship</label>
+      <select id="c-rel"><option value="other">other</option><option value="family">family</option><option value="friend">friend</option><option value="work">work</option></select>
+      <label>Birth Date</label><input id="c-birth" type="date" />
+      <label>Anniversary Date</label><input id="c-ann" type="date" />
+      <label>Tags (comma separated)</label><input id="c-tags" />
+      <button id="c-save" style="margin-top:8px;">Add Contact</button>
+      <div id="c-status" class="status"></div>
+    </div>
+    <div>
+      <button id="c-load">Refresh Contacts</button>
+      <div style="overflow:auto; max-height:420px; margin-top:8px;">
+        <table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Rel</th></tr></thead><tbody id="c-list"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block page_js %}
+<script>
+  const cs = document.getElementById('c-status');
+  async function loadContacts(){
+    const resp = await fetch('/api/contacts/', {headers: authHeaders(false)});
+    const data = await resp.json();
+    const rows = (data.results || data || []).map(c => `<tr><td>${c.full_name||''}</td><td>${c.email||''}</td><td>${c.phone||''}</td><td>${c.relationship||''}</td></tr>`).join('');
+    document.getElementById('c-list').innerHTML = rows;
+  }
+  document.getElementById('c-load').onclick = loadContacts;
+  document.getElementById('c-save').onclick = async () => {
+    const payload = {
+      full_name: document.getElementById('c-name').value.trim(),
+      email: document.getElementById('c-email').value.trim(),
+      phone: document.getElementById('c-phone').value.trim(),
+      relationship: document.getElementById('c-rel').value,
+      birth_date: document.getElementById('c-birth').value || null,
+      anniversary_date: document.getElementById('c-ann').value || null,
+      tags: document.getElementById('c-tags').value.split(',').map(s=>s.trim()).filter(Boolean)
+    };
+    const resp = await fetch('/api/contacts/', {method:'POST', headers: authHeaders(), body: JSON.stringify(payload)});
+    const data = await resp.json();
+    cs.textContent = resp.ok ? 'Contact added.' : (data.detail || JSON.stringify(data));
+    cs.className = resp.ok ? 'status ok' : 'status err';
+    if (resp.ok) loadContacts();
+  };
+  loadContacts();
+</script>
+{% endblock %}

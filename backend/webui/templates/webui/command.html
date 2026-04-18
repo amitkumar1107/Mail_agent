@@ -1,0 +1,99 @@
+{% extends "webui/base.html" %}
+{% block content %}<div class="max-w-4xl mx-auto space-y-6"><div class="card">
+    <h1 class="text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">AI Email Assistant</h1>
+  <label>Natural Language Command</label>
+  <textarea id="cmd"></textarea>
+  <div class="row" style="margin-top:8px;">
+    <button id="parse-btn">Parse</button>
+    <button id="preview-btn">Generate Preview</button>
+  </div>
+  <label style="margin-top:12px;">Voice Upload</label>
+  <input id="audio" type="file" accept="audio/*" />
+  <button id="voice-btn" style="margin-top:8px;">Transcribe Voice</button>
+  <div id="cmd-status" class="status"></div>
+</div>
+
+<div class="card">
+  <h2>Email Preview</h2>
+  <label>Draft ID</label><input id="draft-id" readonly />
+  <label>Recipient</label><input id="recipient-email" />
+  <label>Subject</label><input id="subject" />
+  <label>Body</label><textarea id="body"></textarea>
+  <div class="row" style="margin-top:8px;">
+    <button id="send-btn">Send</button>
+    <button id="edit-btn">Edit</button>
+    <button id="cancel-btn">Cancel</button>
+  </div>
+  <div id="preview-status" class="status"></div>
+</div>
+</div>
+{% endblock %}
+{% block page_js %}
+<script>
+  const cs = document.getElementById('cmd-status');
+  const ps = document.getElementById('preview-status');
+
+  function fillDraft(d){
+    document.getElementById('draft-id').value = d.id || '';
+    document.getElementById('recipient-email').value = d.recipient_email || '';
+    document.getElementById('subject').value = d.subject || '';
+    document.getElementById('body').value = d.body || '';
+  }
+
+  document.getElementById('parse-btn').onclick = async () => {
+    const cmd = document.getElementById('cmd').value.trim();
+    const resp = await fetch('/api/mail/commands/parse/', { method:'POST', headers: authHeaders(), body: JSON.stringify({command_text: cmd}) });
+    const data = await resp.json();
+    cs.textContent = resp.ok ? JSON.stringify(data, null, 2) : (data.detail || JSON.stringify(data));
+    cs.className = resp.ok ? 'status ok' : 'status err';
+  };
+
+  document.getElementById('preview-btn').onclick = async () => {
+    const cmd = document.getElementById('cmd').value.trim();
+    const resp = await fetch('/api/mail/drafts/preview/', { method:'POST', headers: authHeaders(), body: JSON.stringify({command_text: cmd}) });
+    const data = await resp.json();
+    if (resp.ok) { fillDraft(data.draft); ps.textContent = 'Preview ready.'; ps.className='status ok'; }
+    else { ps.textContent = data.detail || JSON.stringify(data); ps.className='status err'; }
+  };
+
+  document.getElementById('send-btn').onclick = async () => {
+    const draftId = Number(document.getElementById('draft-id').value);
+    const resp = await fetch('/api/mail/drafts/confirm/', { method:'POST', headers: authHeaders(), body: JSON.stringify({draft_id:draftId, action:'send'}) });
+    const data = await resp.json();
+    ps.textContent = resp.ok ? 'Sent.' : (data.detail || JSON.stringify(data));
+    ps.className = resp.ok ? 'status ok' : 'status err';
+  };
+
+  document.getElementById('edit-btn').onclick = async () => {
+    const draftId = Number(document.getElementById('draft-id').value);
+    const resp = await fetch('/api/mail/drafts/confirm/', { method:'POST', headers: authHeaders(), body: JSON.stringify({
+      draft_id:draftId, action:'edit', subject:document.getElementById('subject').value, body:document.getElementById('body').value
+    })});
+    const data = await resp.json();
+    ps.textContent = resp.ok ? 'Updated.' : (data.detail || JSON.stringify(data));
+    ps.className = resp.ok ? 'status ok' : 'status err';
+  };
+
+  document.getElementById('cancel-btn').onclick = async () => {
+    const draftId = Number(document.getElementById('draft-id').value);
+    const resp = await fetch('/api/mail/drafts/confirm/', { method:'POST', headers: authHeaders(), body: JSON.stringify({draft_id:draftId, action:'cancel'}) });
+    const data = await resp.json();
+    ps.textContent = resp.ok ? 'Canceled.' : (data.detail || JSON.stringify(data));
+    ps.className = resp.ok ? 'status ok' : 'status err';
+  };
+
+  document.getElementById('voice-btn').onclick = () => { document.getElementById('audio').click(); }
+
+  document.getElementById('audio').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    cs.textContent='Transcribing...';
+    const fd = new FormData(); fd.append('audio', f);
+    const headers = authHeaders(false);
+    const resp = await fetch('/api/voice/transcribe/', { method:'POST', headers, body: fd });
+    const data = await resp.json();
+    if (resp.ok) { document.getElementById('cmd').value = data.transcript || ''; cs.textContent = 'Transcribed successfully.'; cs.className='status ok'; }
+    else { cs.textContent = data.detail || JSON.stringify(data); cs.className='status err'; }
+  };
+</script>
+{% endblock %}
